@@ -6,6 +6,7 @@ import WeeklyChart from "./WeeklyChart";
 import WorkoutCard from "./WorkoutCard";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface Workout {
   id: number;
@@ -24,8 +25,37 @@ const calculatePace = (distance: number, duration: number) => {
 
 const WorkoutDashboard = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [weeklyData, setWeeklyData] = useState<{ name: string; distance: number }[]>([]);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to view your workouts",
+          variant: "destructive",
+        });
+        navigate("/auth");
+      }
+    };
+    
+    checkAuth();
+  }, [navigate, toast]);
+
+  // Subscribe to auth changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   // Fetch workouts on component mount
   useEffect(() => {
@@ -54,6 +84,9 @@ const WorkoutDashboard = () => {
 
   const fetchWorkouts = async () => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
       // Get the date for 7 days ago
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -94,12 +127,22 @@ const WorkoutDashboard = () => {
   };
 
   const handleAddWorkout = async (formData: any) => {
-    const pace = calculatePace(
-      parseFloat(formData.distance),
-      parseFloat(formData.duration)
-    );
-    
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to add workouts",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const pace = calculatePace(
+        parseFloat(formData.distance),
+        parseFloat(formData.duration)
+      );
+      
       const { error } = await supabase
         .from('workouts')
         .insert([
@@ -108,7 +151,7 @@ const WorkoutDashboard = () => {
             distance: parseFloat(formData.distance),
             duration: parseInt(formData.duration),
             pace,
-            user_id: (await supabase.auth.getUser()).data.user?.id
+            user_id: session.user.id
           }
         ]);
 
