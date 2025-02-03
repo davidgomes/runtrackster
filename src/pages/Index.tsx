@@ -1,7 +1,13 @@
+import Header from "@/components/Header";
 import WorkoutDashboard from "@/components/WorkoutDashboard";
 
 const Index = () => {
-  return <WorkoutDashboard />;
+  return (
+    <>
+      <Header />
+      <WorkoutDashboard />
+    </>
+  );
 };
 
 export default Index;

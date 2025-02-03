@@ -29,7 +29,6 @@ const WorkoutDashboard = () => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [weeklyData, setWeeklyData] = useState<{ name: string; distance: number }[]>([]);
 
-  // Check authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -193,8 +192,6 @@ const WorkoutDashboard = () => {
 
   return (
     <div className="container py-8">
-      <h1 className="text-3xl font-bold mb-8">Running Tracker</h1>
-      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatsCard
           title="Total Distance"
