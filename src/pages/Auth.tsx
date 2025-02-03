@@ -11,6 +11,7 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -19,7 +20,19 @@ export default function Auth() {
     setLoading(true);
     
     try {
-      if (isLogin) {
+      if (isForgotPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth`,
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Success!",
+          description: "Check your email for the password reset link.",
+        });
+        setIsForgotPassword(false);
+      } else if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -52,16 +65,24 @@ export default function Auth() {
     }
   };
 
+  const getTitle = () => {
+    if (isForgotPassword) return "Reset Password";
+    return isLogin ? "Login" : "Sign Up";
+  };
+
+  const getDescription = () => {
+    if (isForgotPassword) return "Enter your email to receive a password reset link.";
+    return isLogin
+      ? "Welcome back! Please login to continue."
+      : "Create an account to get started.";
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{isLogin ? "Login" : "Sign Up"}</CardTitle>
-          <CardDescription>
-            {isLogin
-              ? "Welcome back! Please login to continue."
-              : "Create an account to get started."}
-          </CardDescription>
+          <CardTitle>{getTitle()}</CardTitle>
+          <CardDescription>{getDescription()}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAuth} className="space-y-4">
@@ -74,28 +95,58 @@ export default function Auth() {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+            {!isForgotPassword && (
+              <div className="space-y-2">
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Loading..." : isLogin ? "Login" : "Sign Up"}
+              {loading
+                ? "Loading..."
+                : isForgotPassword
+                ? "Send Reset Link"
+                : isLogin
+                ? "Login"
+                : "Sign Up"}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => setIsLogin(!isLogin)}
-            >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : "Already have an account? Login"}
-            </Button>
+            {isLogin && !isForgotPassword && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setIsForgotPassword(true)}
+              >
+                Forgot Password?
+              </Button>
+            )}
+            {!isForgotPassword && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setIsLogin(!isLogin)}
+              >
+                {isLogin
+                  ? "Don't have an account? Sign up"
+                  : "Already have an account? Login"}
+              </Button>
+            )}
+            {isForgotPassword && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setIsForgotPassword(false)}
+              >
+                Back to Login
+              </Button>
+            )}
           </form>
         </CardContent>
       </Card>
