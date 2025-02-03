@@ -12,14 +12,22 @@ interface Workout {
 }
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    console.log('Generating workout recommendation...');
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        auth: {
+          persistSession: false,
+        },
+      }
     )
 
     // Get authorization header from request
@@ -35,14 +43,24 @@ Deno.serve(async (req) => {
       .order('date', { ascending: false })
       .limit(5)
 
-    if (workoutsError) throw workoutsError
+    if (workoutsError) {
+      console.error('Error fetching workouts:', workoutsError);
+      throw workoutsError;
+    }
+
+    console.log('Recent workouts:', workouts);
 
     // Calculate averages
-    const avgDistance = workouts.reduce((sum, w) => sum + Number(w.distance), 0) / workouts.length
-    const avgDuration = workouts.reduce((sum, w) => sum + w.duration, 0) / workouts.length
+    const avgDistance = workouts.length > 0 
+      ? workouts.reduce((sum, w) => sum + Number(w.distance), 0) / workouts.length 
+      : 5; // Default to 5km if no workouts
+    const avgDuration = workouts.length > 0
+      ? workouts.reduce((sum, w) => sum + w.duration, 0) / workouts.length
+      : 30; // Default to 30 minutes if no workouts
 
     // Generate recommendation based on recent performance
-    const recommendation = generateRecommendation(workouts, avgDistance, avgDuration)
+    const recommendation = generateRecommendation(workouts, avgDistance, avgDuration);
+    console.log('Generated recommendation:', recommendation);
 
     return new Response(
       JSON.stringify(recommendation),
@@ -52,6 +70,7 @@ Deno.serve(async (req) => {
       },
     )
   } catch (error) {
+    console.error('Error in generate-workout function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
@@ -64,13 +83,13 @@ Deno.serve(async (req) => {
 
 function generateRecommendation(workouts: Workout[], avgDistance: number, avgDuration: number) {
   // Determine if user needs a rest day
-  const lastWorkoutDate = new Date(workouts[0]?.date || new Date())
-  const today = new Date()
-  const daysSinceLastWorkout = Math.floor((today.getTime() - lastWorkoutDate.getTime()) / (1000 * 60 * 60 * 24))
+  const lastWorkoutDate = workouts[0]?.date ? new Date(workouts[0].date) : new Date(0);
+  const today = new Date();
+  const daysSinceLastWorkout = Math.floor((today.getTime() - lastWorkoutDate.getTime()) / (1000 * 60 * 60 * 24));
 
   if (daysSinceLastWorkout < 1) {
     return {
-      type: "Rest",
+      type: "Rest Day",
       recommendation: "Take a rest day to recover and prevent injury.",
       distance: 0,
       duration: 0
@@ -99,8 +118,8 @@ function generateRecommendation(workouts: Workout[], avgDistance: number, avgDur
     }
   ]
 
-  const workoutIndex = workouts.length % workoutTypes.length
-  const selectedWorkout = workoutTypes[workoutIndex]
+  const workoutIndex = workouts.length % workoutTypes.length;
+  const selectedWorkout = workoutTypes[workoutIndex];
 
   return {
     type: selectedWorkout.type,
