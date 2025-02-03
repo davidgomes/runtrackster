@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useToast } from "@/components/ui/use-toast";
 import AddWorkoutForm from "./AddWorkoutForm";
 import StatsCard from "./StatsCard";
 import WeeklyChart from "./WeeklyChart";
 import WorkoutCard from "./WorkoutCard";
 import { Card } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Workout {
   id: number;
@@ -21,23 +23,92 @@ const calculatePace = (distance: number, duration: number) => {
 };
 
 const WorkoutDashboard = () => {
+  const { toast } = useToast();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
-  const handleAddWorkout = (formData: any) => {
+  // Fetch workouts on component mount
+  useEffect(() => {
+    fetchWorkouts();
+  }, []);
+
+  const fetchWorkouts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('workouts')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching workouts:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load workouts",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const formattedWorkouts = data.map(workout => ({
+        id: workout.id,
+        date: new Date(workout.date).toLocaleDateString(),
+        distance: Number(workout.distance),
+        duration: `${workout.duration} min`,
+        pace: workout.pace
+      }));
+
+      setWorkouts(formattedWorkouts);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load workouts",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddWorkout = async (formData: any) => {
     const pace = calculatePace(
       parseFloat(formData.distance),
       parseFloat(formData.duration)
     );
     
-    const newWorkout = {
-      id: Date.now(),
-      date: new Date(formData.date).toLocaleDateString(),
-      distance: parseFloat(formData.distance),
-      duration: `${formData.duration} min`,
-      pace,
-    };
+    try {
+      const { error } = await supabase
+        .from('workouts')
+        .insert([
+          {
+            date: formData.date,
+            distance: parseFloat(formData.distance),
+            duration: parseInt(formData.duration),
+            pace,
+            user_id: (await supabase.auth.getUser()).data.user?.id
+          }
+        ]);
 
-    setWorkouts([newWorkout, ...workouts]);
+      if (error) {
+        console.error('Error inserting workout:', error);
+        toast({
+          title: "Error",
+          description: "Failed to add workout",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      fetchWorkouts(); // Refresh the workouts list
+      toast({
+        title: "Success",
+        description: "Workout added successfully!",
+      });
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add workout",
+        variant: "destructive",
+      });
+    }
   };
 
   const totalDistance = workouts.reduce((sum, workout) => sum + workout.distance, 0);
@@ -45,7 +116,7 @@ const WorkoutDashboard = () => {
     ? calculatePace(
         totalDistance,
         workouts.reduce(
-          (sum, workout) => sum + parseFloat(workout.duration),
+          (sum, workout) => sum + parseInt(workout.duration),
           0
         )
       )
