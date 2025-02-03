@@ -3,6 +3,7 @@ import AddWorkoutForm from "./AddWorkoutForm";
 import StatsCard from "./StatsCard";
 import WeeklyChart from "./WeeklyChart";
 import WorkoutCard from "./WorkoutCard";
+import { Card } from "@/components/ui/card";
 
 interface Workout {
   id: number;
