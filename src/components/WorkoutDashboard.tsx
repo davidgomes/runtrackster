@@ -25,17 +25,43 @@ const calculatePace = (distance: number, duration: number) => {
 const WorkoutDashboard = () => {
   const { toast } = useToast();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [weeklyData, setWeeklyData] = useState<{ name: string; distance: number }[]>([]);
 
   // Fetch workouts on component mount
   useEffect(() => {
     fetchWorkouts();
   }, []);
 
+  // Process workouts data for weekly chart
+  useEffect(() => {
+    const processWeeklyData = () => {
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const weekData = days.map(day => ({ name: day, distance: 0 }));
+      
+      workouts.forEach(workout => {
+        const date = new Date(workout.date);
+        const dayIndex = date.getDay();
+        weekData[dayIndex].distance += workout.distance;
+      });
+      
+      // Reorder array to start with Monday
+      const mondayFirst = [...weekData.slice(1), weekData[0]];
+      setWeeklyData(mondayFirst);
+    };
+
+    processWeeklyData();
+  }, [workouts]);
+
   const fetchWorkouts = async () => {
     try {
+      // Get the date for 7 days ago
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
       const { data, error } = await supabase
         .from('workouts')
         .select('*')
+        .gte('date', sevenDaysAgo.toISOString().split('T')[0])
         .order('date', { ascending: false });
 
       if (error) {
@@ -122,16 +148,6 @@ const WorkoutDashboard = () => {
       )
     : "0:00";
 
-  const chartData = [
-    { name: "Mon", distance: 5 },
-    { name: "Tue", distance: 7 },
-    { name: "Wed", distance: 3 },
-    { name: "Thu", distance: 8 },
-    { name: "Fri", distance: 4 },
-    { name: "Sat", distance: 10 },
-    { name: "Sun", distance: 6 },
-  ];
-
   return (
     <div className="container py-8">
       <h1 className="text-3xl font-bold mb-8">Running Tracker</h1>
@@ -156,7 +172,7 @@ const WorkoutDashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         <div className="lg:col-span-2">
-          <WeeklyChart data={chartData} />
+          <WeeklyChart data={weeklyData} />
         </div>
         <div>
           <Card className="p-6">
