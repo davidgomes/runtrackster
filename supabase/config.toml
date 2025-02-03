@@ -1,1 +1,3 @@
 project_id = "payqrojrjuvrccalyruc"
+[functions.generate-workout]
+verify_jwt = true

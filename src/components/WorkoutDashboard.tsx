@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import AddWorkoutForm from "./AddWorkoutForm";
 import StatsCard from "./StatsCard";
 import WeeklyChart from "./WeeklyChart";
 import WorkoutCard from "./WorkoutCard";
+import WorkoutRecommendation from "./WorkoutRecommendation";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -214,7 +215,8 @@ const WorkoutDashboard = () => {
         <div className="lg:col-span-2">
           <WeeklyChart data={weeklyData} />
         </div>
-        <div>
+        <div className="space-y-6">
+          <WorkoutRecommendation />
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Add Workout</h3>
             <AddWorkoutForm onSubmit={handleAddWorkout} />
