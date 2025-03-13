@@ -1,14 +1,38 @@
+
 import { LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useTheme } from "@/components/theme-provider";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { User } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function Header() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserAvatar = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData.user) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("id", userData.user.id)
+          .single();
+        
+        if (!error && data && data.avatar_url) {
+          setAvatarUrl(data.avatar_url);
+        }
+      }
+    };
+
+    fetchUserAvatar();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -22,6 +46,10 @@ export default function Header() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleProfileClick = () => {
+    navigate("/profile");
   };
 
   return (
@@ -39,6 +67,14 @@ export default function Header() {
             ) : (
               <Sun className="h-5 w-5" />
             )}
+          </Button>
+          <Button variant="ghost" onClick={handleProfileClick} className="p-1">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={avatarUrl || ""} alt="Profile" />
+              <AvatarFallback className="bg-muted">
+                <User className="h-4 w-4" />
+              </AvatarFallback>
+            </Avatar>
           </Button>
           <Button variant="ghost" onClick={handleLogout}>
             <LogOut className="mr-2" />
