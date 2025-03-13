@@ -1,16 +1,18 @@
 
 import { useState, useEffect } from "react";
-import { User, Camera, Upload } from "lucide-react";
+import { User, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useProfile } from "@/context/ProfileContext";
 
 export default function ProfilePicture() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
+  const { setAvatarUrl: setGlobalAvatarUrl, refreshAvatar } = useProfile();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -35,6 +37,7 @@ export default function ProfilePicture() {
       if (error) throw error;
       if (data && data.avatar_url) {
         setAvatarUrl(data.avatar_url);
+        setGlobalAvatarUrl(data.avatar_url);
       }
     } catch (error: any) {
       console.error("Error fetching profile:", error.message);
@@ -72,6 +75,9 @@ export default function ProfilePicture() {
       if (updateError) throw updateError;
 
       setAvatarUrl(data.publicUrl);
+      setGlobalAvatarUrl(data.publicUrl);
+      refreshAvatar(); // Trigger a refresh in other components
+
       toast({
         title: "Success",
         description: "Profile picture updated!",

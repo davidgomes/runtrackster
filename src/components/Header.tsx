@@ -8,12 +8,14 @@ import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { User } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useProfile } from "@/context/ProfileContext";
 
 export default function Header() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const { avatarUrl: globalAvatarUrl, refreshAvatar } = useProfile();
 
   useEffect(() => {
     const fetchUserAvatar = async () => {
@@ -32,7 +34,7 @@ export default function Header() {
     };
 
     fetchUserAvatar();
-  }, []);
+  }, [globalAvatarUrl]); // Re-fetch when global avatar URL changes
 
   const handleLogout = async () => {
     try {
